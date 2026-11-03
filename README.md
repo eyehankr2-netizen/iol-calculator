@@ -27,3 +27,4 @@ https://eyehankr2-netizen.github.io/iol-calculator/
 - 앱을 고치면 `index.html`의 `VERSION`과 `sw.js`의 `CACHE`를 함께 올립니다.
 - 엔진을 고치면 `tests/reference_impl.py`를 실행해 자가진단 기준값을 다시 넣고, `tests/run_engine_tests.py`와 `tests/run_ui_tests.py`가 모두 통과하는지 확인합니다.
 - 렌즈 데이터에는 나중의 재고 관리 기능을 위한 `stock` 칸이 비어 있는 상태로 들어 있습니다.
+- GitHub에 올린 뒤에는 `tests/check_live.py`로 공개 주소의 앱이 테스트한 파일과 같은지, 설치와 오프라인 동작이 되는지 확인합니다.
