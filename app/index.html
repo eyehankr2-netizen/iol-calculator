@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b5f78">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="Offline IOL power calculator: SRK/T, Hoffer Q, Holladay 1, SRK II">
+<title>IOL Calculator</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icon-192.png">
+<style>
+:root{
+  --bg:#eef2f5;--card:#fff;--text:#13212c;--muted:#566774;--line:#d3dbe1;
+  --accent:#0b5f78;--accent-ink:#fff;--accent-soft:#d9eef5;
+  --sel:#ffe38a;--badge-ink:#fff;--good:#1b7f3b;
+  --caution-bg:#fff5d6;--caution-line:#c99400;--caution-ink:#4d3800;
+  --alert-bg:#fde6e6;--alert-line:#c62828;--alert-ink:#5e0d0d;
+  --info-bg:#e7f0fb;--info-line:#3a78cf;--info-ink:#143a6b;
+  --od:#1565c0;--os:#2e7d32;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0c1216;--card:#162027;--text:#e5edf2;--muted:#a3b4c0;--line:#2a3842;
+    --accent:#4bbad8;--accent-ink:#002630;--accent-soft:#143440;
+    --sel:#5a4800;--badge-ink:#06131a;--good:#6fd38f;
+    --caution-bg:#382d0c;--caution-line:#e0b030;--caution-ink:#ffe6a0;
+    --alert-bg:#3c1414;--alert-line:#ff6b6b;--alert-ink:#ffd3d3;
+    --info-bg:#12263c;--info-line:#6ea6ff;--info-ink:#d2e4ff;
+    --od:#64b5f6;--os:#81c784;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans",sans-serif;font-size:17px;line-height:1.4;background:var(--bg);color:var(--text);-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+.topbar{position:sticky;top:0;z-index:5;background:var(--accent);color:var(--accent-ink);padding:calc(10px + env(safe-area-inset-top)) 16px 10px;display:flex;align-items:center;justify-content:space-between}
+.topbar h1{font-size:19px;margin:0;font-weight:700;letter-spacing:.2px}
+.topbar .ver{font-size:13px;opacity:.85}
+main{padding:12px 12px calc(86px + env(safe-area-inset-bottom));max-width:640px;margin:0 auto}
+.tab{display:none}.tab.active{display:block}
+.card{background:var(--card);border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+h2{font-size:18px;margin:0 0 8px}
+h3{font-size:16px;margin:0 0 8px}
+p{margin:6px 0}
+.small{font-size:14px}.muted{color:var(--muted)}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border:2px solid var(--accent);border-radius:10px;overflow:hidden}
+.seg button{appearance:none;-webkit-appearance:none;border:0;margin:0;background:transparent;color:var(--accent);font:inherit;font-size:15px;font-weight:700;padding:8px 2px;min-height:46px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--accent)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+#formulaSeg button{font-size:14px;padding:8px 0;letter-spacing:-.2px}
+.seg.eye button[data-eye="OD"][aria-pressed="true"]{background:var(--od);color:var(--badge-ink)}
+.seg.eye button[data-eye="OS"][aria-pressed="true"]{background:var(--os);color:var(--badge-ink)}
+.row2,.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.field{display:block;margin-top:12px}
+.lbl{display:block;font-size:14px;font-weight:700;color:var(--muted);margin-bottom:4px}
+input[type=text],select{width:100%;font:inherit;font-size:21px;padding:9px 12px;min-height:52px;border:1.5px solid var(--line);border-radius:10px;background:var(--card);color:var(--text);font-variant-numeric:tabular-nums}
+select{font-size:18px}
+input::placeholder{color:var(--muted);opacity:.5}
+input:focus,select:focus{outline:3px solid var(--accent-soft);border-color:var(--accent)}
+input.invalid{border-color:var(--alert-line);background:var(--alert-bg)}
+.echo{font-size:13px;color:var(--muted);min-height:18px;margin-top:3px}
+.echo.err{color:var(--alert-line);font-weight:700}
+.kline{font-size:14px;color:var(--muted);min-height:20px;margin-top:4px}
+.btn{appearance:none;-webkit-appearance:none;font:inherit;font-weight:700;font-size:16px;border-radius:10px;min-height:48px;padding:10px 16px;cursor:pointer;border:2px solid var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink)}
+.btn.secondary{background:transparent;color:var(--accent)}
+.btn.danger{background:transparent;color:var(--alert-line);border-color:var(--alert-line)}
+.btn.wide{width:100%;margin-top:14px}
+.btn.small{min-height:40px;padding:6px 14px;font-size:15px}
+.btnrow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.msg{border-left:5px solid;border-radius:8px;padding:10px 12px;margin:0 0 10px;font-size:15px}
+.msg.alert{background:var(--alert-bg);border-color:var(--alert-line);color:var(--alert-ink)}
+.msg.caution{background:var(--caution-bg);border-color:var(--caution-line);color:var(--caution-ink)}
+.msg.info{background:var(--info-bg);border-color:var(--info-line);color:var(--info-ink)}
+.placeholder{text-align:center;padding:22px 14px}
+.res-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.eye-badge{display:inline-block;min-width:46px;text-align:center;font-weight:800;border-radius:8px;padding:3px 8px;color:var(--badge-ink);font-size:16px}
+.eye-badge.od{background:var(--od)}.eye-badge.os{background:var(--os)}
+.eye-badge.none{background:transparent;color:var(--muted);border:1.5px dashed var(--muted)}
+.res-formula{font-weight:800;font-size:19px}
+.res-lens{font-size:14px;color:var(--muted);margin-top:4px}
+.big{margin:12px 0 8px;padding:12px;border-radius:12px;background:var(--accent-soft)}
+.big-label{font-size:14px;font-weight:700;color:var(--muted)}
+.big-value{font-size:42px;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}
+.big-value .u{font-size:22px;font-weight:700;margin-left:6px}
+.big-note{display:grid;grid-template-columns:1fr auto;gap:2px 12px;font-size:15px;margin-top:6px}
+.big-note b{text-align:right;font-variant-numeric:tabular-nums}
+.kv{font-size:15px;margin:4px 0}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;margin-top:8px}
+th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+th{font-size:13px;color:var(--muted);font-weight:700}
+table.rx td{font-size:19px}
+tr.closest td{background:var(--sel);font-weight:800}
+table.cmp tbody tr{cursor:pointer}
+table.cmp tr.sel td{background:var(--accent-soft);font-weight:800}
+details{margin-top:10px}
+summary{cursor:pointer;font-weight:700;color:var(--accent);padding:6px 0}
+dl.det{display:grid;grid-template-columns:1fr auto;gap:4px 12px;margin:6px 0 0;font-size:14px}
+dl.det dt{color:var(--muted)}dl.det dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
+.lens-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.lens-main{flex:1;min-width:0}
+.lens-name{font-weight:800;overflow-wrap:anywhere}
+.lens-sub{font-size:14px;color:var(--muted)}
+.tabbar{position:fixed;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(3,1fr);background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:10}
+.tabbar button{appearance:none;-webkit-appearance:none;border:0;background:transparent;font:inherit;font-size:15px;font-weight:700;color:var(--muted);min-height:60px;cursor:pointer}
+.tabbar button[aria-selected="true"]{color:var(--accent);box-shadow:inset 0 3px 0 var(--accent)}
+.banner{background:var(--alert-line);color:#fff;padding:12px 16px;font-weight:800}
+dl.ref dt{font-weight:800;margin-top:10px}dl.ref dd{margin:2px 0 0;font-size:14px}
+.status div{margin:4px 0;font-size:15px}
+.good{color:var(--good);font-weight:700}.bad{color:var(--alert-line);font-weight:800}
+@media (max-width:360px){.seg button{font-size:14px}#formulaSeg button{font-size:13px}.big-value{font-size:36px}}
+</style>
+</head>
+<body>
+<header class="topbar"><h1>IOL Calculator</h1><span class="ver" id="verLabel"></span></header>
+<div id="selftestBanner" class="banner" hidden></div>
+<main>
+
+<section id="tab-calc" class="tab active" aria-label="Calculate">
+  <div class="card">
+    <div class="seg" id="formulaSeg" role="group" aria-label="Formula">
+      <button type="button" data-formula="srkt">SRK/T</button>
+      <button type="button" data-formula="hofferq">Hoffer Q</button>
+      <button type="button" data-formula="holladay1">Holladay 1</button>
+      <button type="button" data-formula="srk2">SRK II</button>
+    </div>
+    <div class="row2">
+      <div class="field"><span class="lbl">Eye</span>
+        <div class="seg eye" id="eyeSeg" role="group" aria-label="Eye">
+          <button type="button" data-eye="OD">OD</button>
+          <button type="button" data-eye="OS">OS</button>
+        </div>
+      </div>
+      <div class="field"><span class="lbl">K unit</span>
+        <div class="seg" id="kUnitSeg" role="group" aria-label="K unit">
+          <button type="button" data-unit="D">D</button>
+          <button type="button" data-unit="mm">mm</button>
+        </div>
+      </div>
+    </div>
+    <label class="field"><span class="lbl">IOL model</span><select id="lensSelect"></select></label>
+    <div class="grid2">
+      <label class="field"><span class="lbl" id="k1lbl">K1 (D)</span><input id="k1" type="text" inputmode="decimal" enterkeyhint="next" autocomplete="off" autocapitalize="off" spellcheck="false"><div class="echo" id="k1echo"></div></label>
+      <label class="field"><span class="lbl" id="k2lbl">K2 (D)</span><input id="k2" type="text" inputmode="decimal" enterkeyhint="next" autocomplete="off" autocapitalize="off" spellcheck="false"><div class="echo" id="k2echo"></div></label>
+    </div>
+    <div class="kline" id="kline"></div>
+    <label class="field"><span class="lbl">Axial length (mm)</span><input id="al" type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="23.50"><div class="echo" id="alecho"></div></label>
+    <label class="field"><span class="lbl">Target refraction (D)</span><select id="target"></select></label>
+    <button type="button" class="btn secondary wide" id="newPatient">New patient (clear)</button>
+  </div>
+  <div id="results" aria-live="polite"></div>
+</section>
+
+<section id="tab-lenses" class="tab" aria-label="Lenses">
+  <div class="card">
+    <h2>IOL models for this trip</h2>
+    <p class="small muted">Enter the lenses you are bringing and their constants. Use constants that match your biometry method (ultrasound or optical).</p>
+    <div id="lensList"></div>
+    <button type="button" class="btn primary wide" id="addLens">+ Add IOL model</button>
+  </div>
+  <div class="card" id="lensEditor" hidden>
+    <h2 id="editorTitle">Add IOL model</h2>
+    <label class="field"><span class="lbl">Name</span><input id="edName" type="text" maxlength="40" autocomplete="off"></label>
+    <label class="field"><span class="lbl">A-constant (used by SRK/T and SRK II)</span><input id="edA" type="text" inputmode="decimal" autocomplete="off" placeholder="118.7"></label>
+    <label class="field"><span class="lbl">Hoffer Q pACD in mm (optional)</span><input id="edP" type="text" inputmode="decimal" autocomplete="off"><div class="echo" id="edPecho"></div></label>
+    <label class="field"><span class="lbl">Holladay 1 surgeon factor in mm (optional)</span><input id="edS" type="text" inputmode="text" autocomplete="off"><div class="echo" id="edSecho"></div></label>
+    <div id="edError" class="msg alert" hidden></div>
+    <div class="btnrow"><button type="button" class="btn primary" id="edSave">Save</button><button type="button" class="btn secondary" id="edCancel">Cancel</button></div>
+    <button type="button" class="btn danger wide" id="edDelete" hidden>Delete this IOL model</button>
+  </div>
+  <div class="card">
+    <h2>Defaults</h2>
+    <label class="field"><span class="lbl">Default target refraction (D)</span><select id="defTarget"></select></label>
+    <p class="small muted" id="storageNote"></p>
+  </div>
+</section>
+
+<section id="tab-about" class="tab" aria-label="About">
+  <div class="card">
+    <h2>About this calculator</h2>
+    <p>Offline IOL power calculator. No internet connection is needed.</p>
+    <div class="status" id="statusList"></div>
+  </div>
+  <div class="card">
+    <h2>Formulas</h2>
+    <dl class="ref">
+      <dt>SRK/T</dt>
+      <dd>Retzlaff JA, Sanders DR, Kraff MC. J Cataract Refract Surg 1990;16:333&ndash;340; erratum 1990;16:528. Corrected axial length threshold 24.2&nbsp;mm. When the corneal-height square-root term is negative it is set to zero (Haigis W. J Cataract Refract Surg 1993;19:442&ndash;446, with the authors' reply).</dd>
+      <dt>Hoffer Q</dt>
+      <dd>Hoffer KJ. J Cataract Refract Surg 1993;19:700&ndash;712; errata 1994;20:677 and 2007;33:2&ndash;3. Axial length is limited to 18.5&ndash;31.0&nbsp;mm for the ACD prediction.</dd>
+      <dt>Holladay 1</dt>
+      <dd>Holladay JT, Prager TC, Chandler TY, et al. J Cataract Refract Surg 1988;14:17&ndash;24.</dd>
+      <dt>SRK II</dt>
+      <dd>Sanders DR, Retzlaff J, Kraff MC. J Cataract Refract Surg 1988;14:136&ndash;141. Refraction factor 1.25 when the emmetropia power is above 14&nbsp;D, otherwise 1.0.</dd>
+    </dl>
+  </div>
+  <div class="card">
+    <h2>Lens constants</h2>
+    <p class="small">When only an A-constant is entered, the other constants are derived from it: SRK/T ACD constant = 0.62467&times;A &minus; 68.747; Hoffer Q pACD = 0.58357&times;A &minus; 63.896; Holladay 1 SF = 0.5663&times;A &minus; 65.60. Lens-specific optimized pACD and SF values are preferred when available.</p>
+  </div>
+  <div class="card">
+    <h2>Privacy and safety</h2>
+    <p class="small">No patient data is stored. K, axial length and results are cleared by <b>New patient</b> or when the app is closed. Only the IOL model list and preferences are saved on this device.</p>
+    <p class="small"><b>This tool supports, but does not replace, clinical judgment.</b> Verify biometry and results. The final IOL choice is the surgeon's responsibility.</p>
+  </div>
+</section>
+</main>
+
+<nav class="tabbar" role="tablist">
+  <button type="button" role="tab" id="nav-calc" data-tab="calc" aria-selected="true">Calculate</button>
+  <button type="button" role="tab" id="nav-lenses" data-tab="lenses" aria-selected="false">Lenses</button>
+  <button type="button" role="tab" id="nav-about" data-tab="about" aria-selected="false">About</button>
+</nav>
+
+<script>
+// === IOL ENGINE START ===
+var IOLEngine = (function () {
+  'use strict';
+
+  var VERSION = '1.0.0';
+  var DEG = Math.PI / 180;
+
+  var DEFAULT_OPTIONS = {
+    lcorThreshold: 24.2,  // SRK/T corrected-AL threshold (Retzlaff 1990 with erratum)
+    haigisClamp: true,    // SRK/T: negative square-root term set to 0 (Haigis 1993, authors' reply)
+    hofferAlClamp: true   // Hoffer Q: AL limited to 18.5-31.0 mm for ACD prediction (Hoffer 2007 erratum)
+  };
+
+  var LIMITS = {
+    K: [30, 60], Kmm: [5.5, 11.5], AL: [15, 40], A: [110, 125],
+    pACD: [2, 9], SF: [-3, 4.5], target: [-10, 5]
+  };
+
+  var FORMULA_IDS = ['srkt', 'hofferq', 'holladay1', 'srk2'];
+  var FORMULA_LABELS = { srkt: 'SRK/T', hofferq: 'Hoffer Q', holladay1: 'Holladay 1', srk2: 'SRK II' };
+
+  function withDefaults(o) {
+    var r = {}, k;
+    for (k in DEFAULT_OPTIONS) r[k] = DEFAULT_OPTIONS[k];
+    if (o) for (k in o) if (Object.prototype.hasOwnProperty.call(o, k)) r[k] = o[k];
+    return r;
+  }
+  function isNum(x) { return typeof x === 'number' && isFinite(x); }
+
+  function parseNum(s) {
+    if (s === null || s === undefined) return NaN;
+    s = String(s).trim().replace(',', '.').replace(/−/g, '-');
+    if (!/^[+-]?(\d+\.?\d*|\.\d+)$/.test(s)) return NaN;
+    return parseFloat(s);
+  }
+
+  // Constant conversions used when only an A-constant is known
+  function srktAcdConst(A) { return 0.62467 * A - 68.747; }
+  function pacdFromA(A) { return 0.58357 * A - 63.896; }
+  function sfFromA(A) { return 0.5663 * A - 65.6; }
+
+  // Thin-lens vergence in the form used by SRK/T (Retzlaff 1990) and Holladay 1 (1988).
+  // r: corneal radius (mm), L: optical axial length (mm), C: lens position (mm),
+  // nc1: corneal refractive index minus 1, ref: spectacle refraction (V = 12 mm).
+  var NA = 1.336, V = 12;
+  function vergPower(r, L, C, nc1, ref) {
+    var a = NA * r - nc1 * L, c = NA * r - nc1 * C;
+    return (1000 * NA * (a - 0.001 * ref * (V * a + L * r))) /
+           ((L - C) * (c - 0.001 * ref * (V * c + C * r)));
+  }
+  function vergRefraction(r, L, C, nc1, P) {
+    var a = NA * r - nc1 * L, c = NA * r - nc1 * C;
+    return (1000 * NA * a - P * (L - C) * c) /
+           (NA * (V * a + L * r) - 0.001 * P * (L - C) * (V * c + C * r));
+  }
+
+  function srkt(K, AL, A, o) {
+    var r = 337.5 / K;
+    var LCOR = AL <= o.lcorThreshold ? AL : (-3.446 + 1.716 * AL - 0.0237 * AL * AL);
+    var Cw = -5.41 + 0.58412 * LCOR + 0.098 * K;
+    var X = r * r - (Cw * Cw) / 4;
+    var limitHit = X < 0;
+    if (limitHit) {
+      if (!o.haigisClamp) return { ok: false, error: 'SRK/T cannot be calculated: corneal-height term is negative.' };
+      X = 0;
+    }
+    var H = r - Math.sqrt(X);
+    var acdConst = srktAcdConst(A);
+    var offset = acdConst - 3.336;
+    var ELP = H + offset;
+    var LOPT = AL + (0.65696 - 0.02029 * AL);
+    var ratio = Cw / (2 * r);
+    return {
+      ok: true,
+      power: function (ref) { return vergPower(r, LOPT, ELP, 0.333, ref); },
+      refraction: function (P) { return vergRefraction(r, LOPT, ELP, 0.333, P); },
+      details: { r: r, LCOR: LCOR, Cw: Cw, H: H, acdConst: acdConst, offset: offset, ELP: ELP, LOPT: LOPT, ratio: ratio },
+      flags: { limitHit: limitHit, nearLimit: !limitHit && ratio >= 0.95 }
+    };
+  }
+
+  function hofferQ(K, AL, pACD, o) {
+    var M = AL <= 23 ? 1 : -1;
+    var G = AL <= 23 ? 28 : 23.5;
+    var La = o.hofferAlClamp ? Math.min(31, Math.max(18.5, AL)) : AL;
+    var tk = Math.tan(K * DEG);
+    var d = 23.5 - La;
+    var ACD = pACD + 0.3 * (La - 23.5) + tk * tk +
+              0.1 * M * d * d * Math.tan(0.1 * (G - La) * (G - La) * DEG) - 0.99166;
+    return {
+      ok: true,
+      power: function (ref) {
+        var R = ref / (1 - 0.012 * ref);
+        return 1336 / (AL - ACD - 0.05) - 1.336 / (1.336 / (K + R) - (ACD + 0.05) / 1000);
+      },
+      refraction: function (P) {
+        var R = 1.336 / (1.336 / (1336 / (AL - ACD - 0.05) - P) + (ACD + 0.05) / 1000) - K;
+        return R / (1 + 0.012 * R);
+      },
+      details: { pACD: pACD, ACD: ACD, ALforACD: La, M: M, G: G },
+      flags: { alClamped: La !== AL }
+    };
+  }
+
+  function holladay1(K, AL, SF) {
+    var R = 337.5 / K;
+    var Rag = R < 7 ? 7 : R;
+    var AG = 12.5 * AL / 23.45;
+    if (AG > 13.5) AG = 13.5;
+    var ACD = 0.56 + Rag - Math.sqrt(Rag * Rag - (AG * AG) / 4);
+    var ELP = ACD + SF;
+    var ALm = AL + 0.2;
+    var nc1 = 4 / 3 - 1;
+    return {
+      ok: true,
+      power: function (ref) { return vergPower(R, ALm, ELP, nc1, ref); },
+      refraction: function (P) { return vergRefraction(R, ALm, ELP, nc1, P); },
+      details: { SF: SF, R: R, Rag: Rag, AG: AG, ACD: ACD, ELP: ELP, ALm: ALm },
+      flags: {}
+    };
+  }
+
+  function srk2(K, AL, A) {
+    var A1 = AL < 20 ? A + 3 : AL < 21 ? A + 2 : AL < 22 ? A + 1 : AL < 24.5 ? A : A - 0.5;
+    var Pe = A1 - 2.5 * AL - 0.9 * K;
+    var CR = Pe > 14 ? 1.25 : 1.0;
+    return {
+      ok: true,
+      power: function (ref) { return Pe - CR * ref; },
+      refraction: function (P) { return (Pe - P) / CR; },
+      details: { A1: A1, Pemme: Pe, CR: CR },
+      flags: {}
+    };
+  }
+
+  // inp: { K: mean K (D), AL (mm), A, pACD (optional), SF (optional), target (D) }
+  function computeAll(inp, options) {
+    var o = withDefaults(options);
+    var pACD = isNum(inp.pACD) ? inp.pACD : pacdFromA(inp.A);
+    var SF = isNum(inp.SF) ? inp.SF : sfFromA(inp.A);
+    var target = isNum(inp.target) ? inp.target : 0;
+    var byId = {
+      srkt: srkt(inp.K, inp.AL, inp.A, o),
+      hofferq: hofferQ(inp.K, inp.AL, pACD, o),
+      holladay1: holladay1(inp.K, inp.AL, SF),
+      srk2: srk2(inp.K, inp.AL, inp.A)
+    };
+    var list = FORMULA_IDS.map(function (id) {
+      var r = byId[id];
+      r.id = id;
+      r.label = FORMULA_LABELS[id];
+      if (r.ok) {
+        r.emme = r.power(0);
+        r.forTarget = r.power(target);
+        if (!isNum(r.emme) || !isNum(r.forTarget)) { r.ok = false; r.error = 'Calculation not possible for these values.'; }
+      }
+      return r;
+    });
+    return { byId: byId, list: list, pACD: pACD, SF: SF, pACDauto: !isNum(inp.pACD), SFauto: !isNum(inp.SF), target: target };
+  }
+
+  // Lens powers in 'step' increments around the power for target, highest power first.
+  function lensTable(fr, target, step, half) {
+    step = step || 0.5; half = half || 3;
+    var center = Math.round(fr.forTarget / step) * step;
+    var n = Math.round(half / step);
+    var rows = [];
+    for (var i = n; i >= -n; i--) {
+      var p = Math.round((center + i * step) * 100) / 100;
+      rows.push({ power: p, rx: fr.refraction(p), closest: false });
+    }
+    var best = 0;
+    for (var j = 1; j < rows.length; j++) {
+      // strict '<' keeps the earlier (higher power, more myopic) row on a tie
+      if (Math.abs(rows[j].rx - target) < Math.abs(rows[best].rx - target) - 1e-9) best = j;
+    }
+    rows[best].closest = true;
+    return rows;
+  }
+
+  function warnings(inp, res, extra) {
+    extra = extra || {};
+    var w = [];
+    function add(level, code, text) { w.push({ level: level, code: code, text: text }); }
+    var f = res.byId;
+    if (!f.srkt.ok) add('alert', 'srkt-error', f.srkt.error);
+    else if (f.srkt.flags.limitHit) add('alert', 'srkt-limit', 'SRK/T: steep cornea with long eye. The corneal-height term reached its geometric limit (Haigis 1993), so the SRK/T result is unreliable for this eye. Compare other formulas.');
+    else if (f.srkt.flags.nearLimit) add('caution', 'srkt-near', 'SRK/T: steep cornea with long eye. The corneal-height estimate is near its geometric limit and may be unstable. Compare other formulas.');
+    if (inp.AL < 20) add('caution', 'al-short', 'Very short eye (AL below 20 mm). Re-check the axial length; all formulas are less accurate.');
+    if (inp.AL > 30) add('caution', 'al-long', 'Very long eye (AL above 30 mm). Re-check the axial length; all formulas are less accurate.');
+    if (inp.K < 38 || inp.K > 50) add('caution', 'k-unusual', 'Unusual mean K (' + inp.K.toFixed(2) + ' D). Re-check keratometry.');
+    if (isNum(extra.k1) && isNum(extra.k2) && Math.abs(extra.k1 - extra.k2) > 3) add('caution', 'k-astig', 'High corneal astigmatism (' + Math.abs(extra.k1 - extra.k2).toFixed(2) + ' D). Re-check keratometry.');
+    var vals = res.list.filter(function (r) { return r.ok; }).map(function (r) { return r.forTarget; });
+    if (vals.length > 1) {
+      var spread = Math.max.apply(null, vals) - Math.min.apply(null, vals);
+      if (spread >= 1.0) add('caution', 'spread', 'The four formulas differ by ' + spread.toFixed(2) + ' D. Re-check biometry before choosing a lens.');
+    }
+    if (f.hofferq.ok && f.hofferq.flags.alClamped) add('info', 'hq-clamp', 'Hoffer Q: axial length limited to 18.5-31.0 mm for the ACD prediction (Hoffer 2007 erratum).');
+    var sel = extra.selected && f[extra.selected];
+    if (sel && sel.ok && (sel.forTarget < 6 || sel.forTarget > 30)) add('info', 'power-range', 'IOL power outside the common 6-30 D range. Check that this power is available.');
+    if (inp.AL < 22) add('info', 'hint-short', 'Short eye: Hoffer Q is often preferred when AL is below 22 mm.');
+    if (inp.AL > 26) add('info', 'hint-long', 'Long eye: SRK/T is often preferred when AL is above 26 mm.');
+    var rank = { alert: 0, caution: 1, info: 2 };
+    w.sort(function (a, b) { return rank[a.level] - rank[b.level]; });
+    return w;
+  }
+
+  // Reference cases computed independently (Python, tests/reference_impl.py). Do not edit by hand.
+  var SELFTEST = /*SELFTEST_START*/[{"K":43.5,"AL":23.5,"A":118.7,"T":-0.5,"P":21.0,"expect":{"srkt":{"emme":20.923751,"forTarget":21.64295,"rx":-0.052615},"hofferq":{"emme":20.898597,"forTarget":21.624672,"rx":-0.069328},"holladay1":{"emme":20.934583,"forTarget":21.658407,"rx":-0.044845},"srk2":{"emme":20.8,"forTarget":21.425,"rx":-0.16}}},{"K":45.0,"AL":21.0,"A":118.4,"T":0.0,"P":26.0,"expect":{"srkt":{"emme":27.445011,"forTarget":27.445011,"rx":1.033872},"hofferq":{"emme":28.10103,"forTarget":28.10103,"rx":1.46965},"holladay1":{"emme":27.779168,"forTarget":27.779168,"rx":1.258747},"srk2":{"emme":26.4,"forTarget":26.4,"rx":0.32}}},{"K":42.0,"AL":27.0,"A":119.0,"T":-0.25,"P":14.0,"expect":{"srkt":{"emme":12.436398,"forTarget":12.81383,"rx":-1.050193},"hofferq":{"emme":12.320781,"forTarget":12.712102,"rx":-1.088958},"holladay1":{"emme":12.066481,"forTarget":12.443137,"rx":-1.307048},"srk2":{"emme":13.2,"forTarget":13.45,"rx":-0.8}}},{"K":43.0,"AL":31.5,"A":118.7,"T":0.0,"P":3.0,"expect":{"srkt":{"emme":-0.063084,"forTarget":-0.063084,"rx":-1.908623},"hofferq":{"emme":-0.974515,"forTarget":-0.974515,"rx":-2.4976},"holladay1":{"emme":-0.494775,"forTarget":-0.494775,"rx":-2.380155},"srk2":{"emme":0.75,"forTarget":0.75,"rx":-2.25}}},{"K":48.0,"AL":28.0,"A":118.7,"T":-1.0,"P":10.0,"expect":{"srkt":{"emme":0.443937,"forTarget":2.575339,"rx":-4.856482},"hofferq":{"emme":-0.506236,"forTarget":1.236121,"rx":-6.664287},"holladay1":{"emme":-0.057083,"forTarget":1.720013,"rx":-6.218339},"srk2":{"emme":5.0,"forTarget":6.0,"rx":-5.0}}},{"K":44.0,"AL":24.3,"A":118.0,"T":0.0,"P":19.0,"expect":{"srkt":{"emme":17.242962,"forTarget":17.242962,"rx":-1.230366},"hofferq":{"emme":16.84908,"forTarget":16.84908,"rx":-1.515115},"holladay1":{"emme":17.143171,"forTarget":17.143171,"rx":-1.295034},"srk2":{"emme":17.65,"forTarget":17.65,"rx":-1.08}}},{"K":47.0,"AL":18.0,"A":118.4,"T":0.5,"P":32.0,"expect":{"srkt":{"emme":38.636042,"forTarget":37.969171,"rx":4.657724},"hofferq":{"emme":42.160924,"forTarget":41.461044,"rx":6.558766},"holladay1":{"emme":39.502534,"forTarget":38.831165,"rx":5.183383},"srk2":{"emme":34.1,"forTarget":33.475,"rx":1.68}}},{"K":40.0,"AL":25.5,"A":118.9,"T":-2.0,"P":20.0,"expect":{"srkt":{"emme":18.862633,"forTarget":21.57978,"rx":-0.821245},"hofferq":{"emme":19.496359,"forTarget":22.337569,"rx":-0.344708},"holladay1":{"emme":19.232527,"forTarget":22.023605,"rx":-0.536643},"srk2":{"emme":18.65,"forTarget":21.15,"rx":-1.08}}}]/*SELFTEST_END*/;
+
+  function selfTest() {
+    var failures = [];
+    SELFTEST.forEach(function (c, i) {
+      var res = computeAll({ K: c.K, AL: c.AL, A: c.A, target: c.T });
+      FORMULA_IDS.forEach(function (id) {
+        var e = c.expect[id], r = res.byId[id];
+        if (!r.ok) { failures.push('case ' + (i + 1) + ' ' + id + ': not calculable'); return; }
+        var got = [r.emme, r.forTarget, r.refraction(c.P)], exp = [e.emme, e.forTarget, e.rx];
+        for (var k = 0; k < 3; k++) {
+          if (!(Math.abs(got[k] - exp[k]) <= 0.001)) failures.push('case ' + (i + 1) + ' ' + id + ': ' + got[k] + ' vs ' + exp[k]);
+        }
+      });
+    });
+    return { pass: SELFTEST.length > 0 && failures.length === 0, n: SELFTEST.length, failures: failures };
+  }
+
+  return {
+    VERSION: VERSION, LIMITS: LIMITS, FORMULA_IDS: FORMULA_IDS, FORMULA_LABELS: FORMULA_LABELS,
+    DEFAULT_OPTIONS: DEFAULT_OPTIONS,
+    parseNum: parseNum, srktAcdConst: srktAcdConst, pacdFromA: pacdFromA, sfFromA: sfFromA,
+    computeAll: computeAll, lensTable: lensTable, warnings: warnings, selfTest: selfTest
+  };
+})();
+// === IOL ENGINE END ===
+</script>
+
+<script>
+(function () {
+  'use strict';
+  var E = window.IOLEngine;
+  var MINUS = '−';
+  function $(id) { return document.getElementById(id); }
+  function isNum(x) { return typeof x === 'number' && isFinite(x); }
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+    });
+  }
+  function num(x, d) { var s = Math.abs(x).toFixed(d); if (Number(s) === 0) return s; return (x < 0 ? MINUS : '') + s; }
+  function rx(x) { var s = Math.abs(x).toFixed(2); if (Number(s) === 0) return '0.00'; return (x > 0 ? '+' : MINUS) + s; }
+  function targetLabel(t) { return t === 0 ? '0.00 (plano)' : rx(t); }
+  function fmtConst(x) { var s = x.toFixed(2); return s.charAt(s.length - 1) === '0' ? s.slice(0, -1) : s; }
+
+  // ---------- settings storage (no patient data is ever stored) ----------
+  var STORAGE_KEY = 'iolcalc.settings.v1';
+  var storageOK = (function () {
+    try {
+      var k = '__iolcalc_probe';
+      window.localStorage.setItem(k, '1');
+      var ok = window.localStorage.getItem(k) === '1';
+      window.localStorage.removeItem(k);
+      return ok;
+    } catch (e) { return false; }
+  })();
+
+  function defaultStore() {
+    return {
+      v: 1,
+      lenses: [{ id: 'lens-sample', name: 'Sample IOL (edit me)', A: 118.0, pACD: null, SF: null, stock: null }],
+      selectedLensId: 'lens-sample', formula: 'srkt', kUnit: 'D', defaultTarget: 0
+    };
+  }
+  function validLens(l) {
+    return l && typeof l === 'object' && typeof l.id === 'string' && typeof l.name === 'string' && l.name.trim() !== '' &&
+      isNum(l.A) && l.A >= E.LIMITS.A[0] && l.A <= E.LIMITS.A[1];
+  }
+  function sanitize(s) {
+    if (!s || typeof s !== 'object') return defaultStore();
+    var out = { v: 1 };
+    out.lenses = Array.isArray(s.lenses) ? s.lenses.filter(validLens).map(function (l) {
+      return {
+        id: l.id, name: l.name.slice(0, 40), A: l.A,
+        pACD: isNum(l.pACD) && l.pACD >= E.LIMITS.pACD[0] && l.pACD <= E.LIMITS.pACD[1] ? l.pACD : null,
+        SF: isNum(l.SF) && l.SF >= E.LIMITS.SF[0] && l.SF <= E.LIMITS.SF[1] ? l.SF : null,
+        stock: l.stock === undefined ? null : l.stock
+      };
+    }) : defaultStore().lenses;
+    out.selectedLensId = typeof s.selectedLensId === 'string' ? s.selectedLensId : null;
+    out.formula = E.FORMULA_IDS.indexOf(s.formula) >= 0 ? s.formula : 'srkt';
+    out.kUnit = s.kUnit === 'mm' ? 'mm' : 'D';
+    out.defaultTarget = isNum(s.defaultTarget) && s.defaultTarget >= -8 && s.defaultTarget <= 3 ? Math.round(s.defaultTarget * 4) / 4 : 0;
+    return out;
+  }
+  function loadStore() {
+    if (!storageOK) return defaultStore();
+    try {
+      var raw = window.localStorage.getItem(STORAGE_KEY);
+      return raw ? sanitize(JSON.parse(raw)) : defaultStore();
+    } catch (e) { return defaultStore(); }
+  }
+  function saveStore() {
+    if (!storageOK) return;
+    try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(store)); } catch (e) { /* ignore */ }
+  }
+
+  var store = loadStore();
+  var ui = { eye: null, touched: {}, editingId: null };
+  var selftest = E.selfTest();
+
+  function findLens(id) {
+    for (var i = 0; i < store.lenses.length; i++) if (store.lenses[i].id === id) return store.lenses[i];
+    return null;
+  }
+  function currentLens() { return findLens(store.selectedLensId) || store.lenses[0] || null; }
+  function newId() { return 'lens-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+  function fillTargetSelect(sel, value) {
+    var html = '';
+    for (var i = 12; i >= -32; i--) {
+      var t = i / 4;
+      html += '<option value="' + t.toFixed(2) + '"' + (Math.abs(t - value) < 1e-9 ? ' selected' : '') + '>' + targetLabel(t) + '</option>';
+    }
+    sel.innerHTML = html;
+  }
+  function fillLensSelect() {
+    var sel = $('lensSelect');
+    if (!store.lenses.length) {
+      sel.innerHTML = '<option value="">No IOL model: add one in Lenses</option>';
+      sel.disabled = true;
+      return;
+    }
+    sel.disabled = false;
+    var cur = currentLens();
+    sel.innerHTML = store.lenses.map(function (l) {
+      return '<option value="' + esc(l.id) + '"' + (cur && l.id === cur.id ? ' selected' : '') + '>' + esc(l.name) + ' (A ' + fmtConst(l.A) + ')</option>';
+    }).join('');
+  }
+  function setPressed(groupId, attr, value) {
+    Array.prototype.forEach.call($(groupId).querySelectorAll('button'), function (b) {
+      b.setAttribute('aria-pressed', b.getAttribute('data-' + attr) === value ? 'true' : 'false');
+    });
+  }
+
+  // ---------- calculator ----------
+  function readField(id, lim) {
+    var raw = $(id).value;
+    if (!raw || !raw.trim()) return { state: 'empty' };
+    var v = E.parseNum(raw);
+    if (!isNum(v)) return { state: 'invalid', msg: 'Enter a number' };
+    if (v < lim[0] || v > lim[1]) return { state: 'invalid', v: v, msg: 'Allowed ' + lim[0] + ' to ' + lim[1] };
+    return { state: 'ok', v: v };
+  }
+  function setEcho(id, f, okText) {
+    var showErr = f.state === 'invalid' && !!ui.touched[id];
+    $(id).classList.toggle('invalid', showErr);
+    var el = $(id + 'echo');
+    el.className = 'echo' + (showErr ? ' err' : '');
+    el.textContent = showErr ? f.msg : (f.state === 'ok' ? okText : '');
+  }
+
+  function renderCalc() {
+    setPressed('formulaSeg', 'formula', store.formula);
+    setPressed('eyeSeg', 'eye', ui.eye);
+    setPressed('kUnitSeg', 'unit', store.kUnit);
+    var mm = store.kUnit === 'mm';
+    $('k1lbl').textContent = 'K1 (' + (mm ? 'mm' : 'D') + ')';
+    $('k2lbl').textContent = 'K2 (' + (mm ? 'mm' : 'D') + ')';
+    $('k1').placeholder = mm ? '7.76' : '43.50';
+    $('k2').placeholder = mm ? '7.67' : '44.00';
+    var lim = mm ? E.LIMITS.Kmm : E.LIMITS.K;
+    var f1 = readField('k1', lim), f2 = readField('k2', lim), fa = readField('al', E.LIMITS.AL);
+    var k1D = f1.state === 'ok' ? (mm ? 337.5 / f1.v : f1.v) : NaN;
+    var k2D = f2.state === 'ok' ? (mm ? 337.5 / f2.v : f2.v) : NaN;
+    setEcho('k1', f1, mm ? '= ' + k1D.toFixed(2) + ' D' : '= ' + (337.5 / k1D).toFixed(2) + ' mm');
+    setEcho('k2', f2, mm ? '= ' + k2D.toFixed(2) + ' D' : '= ' + (337.5 / k2D).toFixed(2) + ' mm');
+    setEcho('al', fa, '');
+    $('kline').textContent = isNum(k1D) && isNum(k2D) ?
+      'Mean K ' + ((k1D + k2D) / 2).toFixed(2) + ' D · Corneal astigmatism ' + Math.abs(k2D - k1D).toFixed(2) + ' D' : '';
+    renderResults(f1, f2, fa, k1D, k2D);
+  }
+
+  function renderResults(f1, f2, fa, k1D, k2D) {
+    var box = $('results');
+    if (!selftest.pass) {
+      box.innerHTML = '<div class="msg alert"><b>Self-test failed.</b> Calculations are disabled on this device. Do not use this copy of the app.</div>';
+      return;
+    }
+    var lens = currentLens();
+    if (!lens) { box.innerHTML = '<div class="card placeholder muted">No IOL model yet. Add one in the <b>Lenses</b> tab.</div>'; return; }
+    var missing = [];
+    if (f1.state !== 'ok') missing.push('K1');
+    if (f2.state !== 'ok') missing.push('K2');
+    if (fa.state !== 'ok') missing.push('axial length');
+    if (missing.length) {
+      box.innerHTML = '<div class="card placeholder muted">Enter ' + missing.join(', ') + ' to calculate.</div>';
+      return;
+    }
+    var target = Number($('target').value);
+    var inp = { K: (k1D + k2D) / 2, AL: fa.v, A: lens.A, pACD: lens.pACD, SF: lens.SF, target: target };
+    var res = E.computeAll(inp);
+    var sel = res.byId[store.formula];
+    var warns = E.warnings(inp, res, { k1: k1D, k2: k2D, selected: store.formula });
+    var html = '';
+    warns.forEach(function (w) { html += '<div class="msg ' + w.level + '" data-code="' + w.code + '">' + esc(w.text) + '</div>'; });
+    html += mainCard(sel, res, inp, lens) + compareCard(res);
+    box.innerHTML = html;
+    Array.prototype.forEach.call(box.querySelectorAll('tr[data-formula]'), function (tr) {
+      tr.addEventListener('click', function () { setFormula(tr.getAttribute('data-formula')); });
+    });
+  }
+
+  function constNote(id, res) {
+    if (id === 'hofferq') return ' · pACD ' + res.pACD.toFixed(2) + (res.pACDauto ? ' (from A)' : '');
+    if (id === 'holladay1') return ' · SF ' + res.SF.toFixed(2) + (res.SFauto ? ' (from A)' : '');
+    return '';
+  }
+
+  function mainCard(sel, res, inp, lens) {
+    var eye = ui.eye ? '<span class="eye-badge ' + ui.eye.toLowerCase() + '">' + ui.eye + '</span>' : '<span class="eye-badge none">Eye?</span>';
+    var head = '<div class="res-head">' + eye + '<span class="res-formula">' + esc(sel.label) + '</span></div>' +
+      '<div class="res-lens">' + esc(lens.name) + ' · A ' + fmtConst(lens.A) + constNote(sel.id, res) + '</div>';
+    if (!sel.ok) return '<div class="card">' + head + '<div class="msg alert">' + esc(sel.error) + '</div></div>';
+    var rows = E.lensTable(sel, inp.target, 0.5, 3);
+    var best = rows.filter(function (r) { return r.closest; })[0];
+    var h = '<div class="card" id="resultCard">' + head;
+    h += '<div class="big"><div class="big-label">IOL power for target ' + targetLabel(inp.target) + ' D</div>' +
+      '<div class="big-value"><span id="resPower">' + num(sel.forTarget, 2) + '</span><span class="u">D</span></div>' +
+      '<div class="big-note"><span>Nearest 0.5 D lens</span><b id="resNearest">' + num(best.power, 1) + ' D</b>' +
+      '<span>Predicted refraction</span><b id="resNearestRx">' + rx(best.rx) + ' D</b></div></div>';
+    h += '<div class="kv">Emmetropia power: <b id="resEmme">' + num(sel.emme, 2) + ' D</b></div>';
+    h += '<div class="kv">Mean K <b>' + inp.K.toFixed(2) + ' D</b> · AL <b>' + inp.AL.toFixed(2) + ' mm</b></div>';
+    h += '<table class="rx" id="rxTable"><thead><tr><th>IOL power (D)</th><th>Predicted refraction (D)</th></tr></thead><tbody>';
+    rows.forEach(function (r) {
+      h += '<tr' + (r.closest ? ' class="closest"' : '') + '><td>' + num(r.power, 1) + '</td><td>' + rx(r.rx) + '</td></tr>';
+    });
+    h += '</tbody></table>' + detailsBlock(sel) + '</div>';
+    return h;
+  }
+
+  function detailsBlock(sel) {
+    var d = sel.details, items = [];
+    function add(k, v, dec, unit) { items.push('<dt>' + k + '</dt><dd>' + v.toFixed(dec) + (unit ? ' ' + unit : '') + '</dd>'); }
+    if (sel.id === 'srkt') {
+      add('Corneal radius r', d.r, 3, 'mm'); add('Corrected AL (LCOR)', d.LCOR, 3, 'mm'); add('Corneal width Cw', d.Cw, 3, 'mm');
+      add('Corneal height H', d.H, 3, 'mm'); add('ACD constant', d.acdConst, 3, 'mm'); add('Offset', d.offset, 3, 'mm');
+      add('Estimated lens position', d.ELP, 3, 'mm'); add('Optical AL (LOPT)', d.LOPT, 3, 'mm'); add('Cw / 2r', d.ratio, 3, '');
+    } else if (sel.id === 'hofferq') {
+      add('pACD', d.pACD, 3, 'mm'); add('AL used for ACD', d.ALforACD, 2, 'mm'); add('Predicted ACD', d.ACD, 3, 'mm');
+    } else if (sel.id === 'holladay1') {
+      add('Surgeon factor (SF)', d.SF, 3, 'mm'); add('Corneal radius R', d.R, 3, 'mm'); add('Rag', d.Rag, 3, 'mm'); add('AG', d.AG, 3, 'mm');
+      add('Anatomic ACD', d.ACD, 3, 'mm'); add('Lens position (ACD + SF)', d.ELP, 3, 'mm'); add('AL + 0.2 mm', d.ALm, 3, 'mm');
+    } else {
+      add('Adjusted A-constant (A1)', d.A1, 2, ''); add('Emmetropia power', d.Pemme, 2, 'D'); add('Refraction factor (CR)', d.CR, 2, '');
+    }
+    return '<details><summary>Calculation details</summary><dl class="det">' + items.join('') + '</dl></details>';
+  }
+
+  function compareCard(res) {
+    var h = '<div class="card"><h3>Compare formulas</h3><table class="cmp" id="cmpTable"><thead><tr><th>Formula</th><th>IOL for target</th><th>Emmetropia</th></tr></thead><tbody>';
+    res.list.forEach(function (r) {
+      h += '<tr data-formula="' + r.id + '"' + (r.id === store.formula ? ' class="sel"' : '') + '><td>' + esc(r.label) + '</td><td>' +
+        (r.ok ? num(r.forTarget, 2) : '—') + '</td><td>' + (r.ok ? num(r.emme, 2) : '—') + '</td></tr>';
+    });
+    return h + '</tbody></table><p class="small muted">Tap a formula to show its lens table.</p></div>';
+  }
+
+  function setFormula(id) {
+    if (E.FORMULA_IDS.indexOf(id) < 0) return;
+    store.formula = id; saveStore(); renderCalc();
+  }
+  function setUnit(u) {
+    if (u === store.kUnit) return;
+    var oldLim = store.kUnit === 'mm' ? E.LIMITS.Kmm : E.LIMITS.K;
+    ['k1', 'k2'].forEach(function (id) {
+      var v = E.parseNum($(id).value);
+      if (isNum(v) && v >= oldLim[0] && v <= oldLim[1]) {
+        var c = 337.5 / v;
+        $(id).value = u === 'mm' ? c.toFixed(3) : c.toFixed(2);
+      }
+    });
+    store.kUnit = u; saveStore(); renderCalc();
+  }
+
+  // ---------- lens list ----------
+  function renderLenses() {
+    var list = $('lensList');
+    if (!store.lenses.length) {
+      list.innerHTML = '<p class="muted">No IOL models yet.</p>';
+    } else {
+      list.innerHTML = store.lenses.map(function (l) {
+        var p = isNum(l.pACD) ? l.pACD.toFixed(2) : E.pacdFromA(l.A).toFixed(2) + ' (from A)';
+        var s = isNum(l.SF) ? l.SF.toFixed(2) : E.sfFromA(l.A).toFixed(2) + ' (from A)';
+        return '<div class="lens-item"><div class="lens-main"><div class="lens-name">' + esc(l.name) + '</div>' +
+          '<div class="lens-sub">A ' + fmtConst(l.A) + ' · pACD ' + p + ' · SF ' + s + '</div></div>' +
+          '<button type="button" class="btn small secondary" data-edit="' + esc(l.id) + '">Edit</button></div>';
+      }).join('');
+      Array.prototype.forEach.call(list.querySelectorAll('button[data-edit]'), function (b) {
+        b.addEventListener('click', function () { openEditor(b.getAttribute('data-edit')); });
+      });
+    }
+    $('storageNote').textContent = storageOK ?
+      'The IOL model list and defaults are saved on this phone.' :
+      'This copy was opened directly from a file and cannot save changes. Changes last until the page is closed.';
+  }
+  function updateEditorEcho() {
+    var A = E.parseNum($('edA').value);
+    var okA = isNum(A) && A >= E.LIMITS.A[0] && A <= E.LIMITS.A[1];
+    $('edPecho').textContent = 'Leave blank to use ' + (okA ? E.pacdFromA(A).toFixed(2) + ', derived from A' : 'a value derived from A');
+    $('edSecho').textContent = 'Leave blank to use ' + (okA ? E.sfFromA(A).toFixed(2) + ', derived from A' : 'a value derived from A');
+  }
+  function openEditor(id) {
+    var l = id ? findLens(id) : null;
+    ui.editingId = l ? l.id : null;
+    $('editorTitle').textContent = l ? 'Edit IOL model' : 'Add IOL model';
+    $('edName').value = l ? l.name : '';
+    $('edA').value = l ? String(l.A) : '';
+    $('edP').value = l && isNum(l.pACD) ? String(l.pACD) : '';
+    $('edS').value = l && isNum(l.SF) ? String(l.SF) : '';
+    $('edDelete').hidden = !l;
+    $('edError').hidden = true;
+    $('lensEditor').hidden = false;
+    updateEditorEcho();
+    $('lensEditor').scrollIntoView({ block: 'start' });
+  }
+  function closeEditor() { ui.editingId = null; $('lensEditor').hidden = true; }
+  function saveEditor() {
+    var name = $('edName').value.trim();
+    var A = E.parseNum($('edA').value);
+    var pRaw = $('edP').value.trim(), sRaw = $('edS').value.trim();
+    var p = pRaw ? E.parseNum(pRaw) : null, s = sRaw ? E.parseNum(sRaw) : null;
+    var L = E.LIMITS, errs = [];
+    if (!name) errs.push('Enter a name.');
+    if (!isNum(A) || A < L.A[0] || A > L.A[1]) errs.push('A-constant must be between ' + L.A[0] + ' and ' + L.A[1] + '.');
+    if (pRaw && (!isNum(p) || p < L.pACD[0] || p > L.pACD[1])) errs.push('pACD must be between ' + L.pACD[0] + ' and ' + L.pACD[1] + ' mm, or blank.');
+    if (sRaw && (!isNum(s) || s < L.SF[0] || s > L.SF[1])) errs.push('SF must be between ' + L.SF[0] + ' and ' + L.SF[1] + ' mm, or blank.');
+    if (errs.length) { $('edError').innerHTML = errs.map(esc).join('<br>'); $('edError').hidden = false; return; }
+    var l = ui.editingId ? findLens(ui.editingId) : null;
+    if (l) { l.name = name; l.A = A; l.pACD = p; l.SF = s; }
+    else { l = { id: newId(), name: name, A: A, pACD: p, SF: s, stock: null }; store.lenses.push(l); store.selectedLensId = l.id; }
+    saveStore(); closeEditor(); fillLensSelect(); renderLenses();
+  }
+  function deleteEditing() {
+    var l = ui.editingId ? findLens(ui.editingId) : null;
+    if (!l) return;
+    if (!window.confirm('Delete "' + l.name + '"?')) return;
+    store.lenses = store.lenses.filter(function (x) { return x.id !== l.id; });
+    if (store.selectedLensId === l.id) store.selectedLensId = store.lenses.length ? store.lenses[0].id : null;
+    saveStore(); closeEditor(); fillLensSelect(); renderLenses();
+  }
+
+  // ---------- about ----------
+  function renderAbout() {
+    var st = [];
+    st.push('<div>Version <b>' + E.VERSION + '</b></div>');
+    st.push(selftest.pass ? '<div class="good">Self-test passed (' + selftest.n + ' reference cases)</div>' :
+      '<div class="bad">Self-test FAILED: do not use this copy</div>');
+    st.push(storageOK ? '<div>IOL model list is saved on this device</div>' : '<div class="bad">Settings cannot be saved in this mode (opened from a file)</div>');
+    var web = location.protocol === 'http:' || location.protocol === 'https:';
+    var off;
+    if (!web) off = 'Opened from a file: works without internet';
+    else if (navigator.serviceWorker && navigator.serviceWorker.controller) off = 'Installed copy: works without internet';
+    else off = 'Preparing the offline copy. Open the app once more while online.';
+    st.push('<div>' + off + '</div>');
+    $('statusList').innerHTML = st.join('');
+  }
+
+  function showTab(name) {
+    ['calc', 'lenses', 'about'].forEach(function (t) {
+      $('tab-' + t).classList.toggle('active', t === name);
+      $('nav-' + t).setAttribute('aria-selected', t === name ? 'true' : 'false');
+    });
+    if (name === 'calc') { fillLensSelect(); renderCalc(); }
+    if (name === 'lenses') renderLenses();
+    if (name === 'about') renderAbout();
+    window.scrollTo(0, 0);
+  }
+
+  // ---------- events ----------
+  $('formulaSeg').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-formula]'); if (b) setFormula(b.getAttribute('data-formula'));
+  });
+  $('eyeSeg').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-eye]'); if (!b) return;
+    var v = b.getAttribute('data-eye'); ui.eye = ui.eye === v ? null : v; renderCalc();
+  });
+  $('kUnitSeg').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-unit]'); if (b) setUnit(b.getAttribute('data-unit'));
+  });
+  $('lensSelect').addEventListener('change', function () { store.selectedLensId = this.value; saveStore(); renderCalc(); });
+  $('target').addEventListener('change', renderCalc);
+  var order = ['k1', 'k2', 'al'];
+  order.forEach(function (id, i) {
+    var el = $(id);
+    el.addEventListener('input', renderCalc);
+    el.addEventListener('blur', function () { if (el.value.trim()) ui.touched[id] = true; renderCalc(); });
+    el.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      if (i < order.length - 1) { $(order[i + 1]).focus(); return; }
+      el.blur();
+      if ($('resultCard')) {
+        var top = $('results').getBoundingClientRect().top + window.pageYOffset - 64;
+        window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+      }
+    });
+  });
+  $('newPatient').addEventListener('click', function () {
+    order.forEach(function (id) { $(id).value = ''; });
+    ui.eye = null; ui.touched = {};
+    $('target').value = store.defaultTarget.toFixed(2);
+    renderCalc();
+    window.scrollTo(0, 0);
+  });
+  $('addLens').addEventListener('click', function () { openEditor(null); });
+  $('edSave').addEventListener('click', saveEditor);
+  $('edCancel').addEventListener('click', closeEditor);
+  $('edDelete').addEventListener('click', deleteEditing);
+  $('edA').addEventListener('input', updateEditorEcho);
+  $('defTarget').addEventListener('change', function () {
+    store.defaultTarget = Number(this.value); saveStore();
+    if (!$('k1').value && !$('k2').value && !$('al').value) $('target').value = store.defaultTarget.toFixed(2);
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.tabbar button'), function (b) {
+    b.addEventListener('click', function () { showTab(b.getAttribute('data-tab')); });
+  });
+
+  // ---------- start ----------
+  $('verLabel').textContent = 'v' + E.VERSION;
+  fillTargetSelect($('target'), store.defaultTarget);
+  fillTargetSelect($('defTarget'), store.defaultTarget);
+  fillLensSelect();
+  if (!selftest.pass) {
+    $('selftestBanner').hidden = false;
+    $('selftestBanner').textContent = 'Self-test failed: do not use this calculator on this device.';
+  }
+  renderCalc();
+
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.protocol === 'http:')) {
+    window.addEventListener('load', function () { navigator.serviceWorker.register('./sw.js').catch(function () {}); });
+    navigator.serviceWorker.addEventListener('controllerchange', renderAbout);
+  }
+})();
+</script>
+</body>
+</html>

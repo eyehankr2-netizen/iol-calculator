@@ -1,0 +1,7 @@
+# personal source spreadsheet: not published
+*.xlsx
+# generated test data and outputs (re-create with the scripts in tests/)
+tests/*.json
+tests/output/
+__pycache__/
+*.pyc
